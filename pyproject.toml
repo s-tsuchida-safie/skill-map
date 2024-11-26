@@ -6,8 +6,12 @@ authors = ["s-tsuchida-safie <s-tsuchida@safie.jp>"]
 readme = "README.md"
 
 [tool.poetry.dependencies]
-python = "3.11"
+python = "3.11.9"
 
+
+[tool.poetry.group.dev.dependencies]
+black = "^24.10.0"
+flake8 = "^7.1.1"
 
 [build-system]
 requires = ["poetry-core"]
