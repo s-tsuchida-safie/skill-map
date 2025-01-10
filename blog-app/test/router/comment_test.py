@@ -79,6 +79,11 @@ async def test_get_comments(test_db, test_client):
 
 @pytest.mark.asyncio
 async def test_post_comments(test_db, test_client):
+    async def delete_comment(comment_id):
+        await test_db.execute(
+            query="DELETE FROM `comment` WHERE `comment_id` = :comment_id;", values={"comment_id": comment_id}
+        )
+
     article_id = await create_article(test_db)
 
     # DB上に存在しないarticle_idでリクエストする
@@ -90,13 +95,14 @@ async def test_post_comments(test_db, test_client):
     req_body = {"content": "content1"}
     res = test_client.post(f"/articles/{article_id}/comments", json=req_body)
     assert res.status_code == 200
+    comment_id = res.json()["comment_id"]
     db_res = await test_db.fetch_one(
-        query="SELECT `content` FROM `comment` WHERE `content` = :content;",
-        values={"content": req_body["content"]},
+        query="SELECT `content` FROM `comment` WHERE `comment_id` = :comment_id;",
+        values={"comment_id": comment_id},
     )
     assert db_res != None
     assert db_res["content"] == req_body["content"]
-    await test_db.execute(query="DELETE FROM `article` WHERE `title` = :title", values={"title": "title1"})
+    await delete_comment(comment_id)
 
     # contentを指定せずにリクエストする
     req_body = {}
@@ -110,6 +116,12 @@ async def test_post_comments(test_db, test_client):
     assert res.json()["error_code"] == "invalid_format"
 
     # contentを401文字以上でリクエストする
+    req_body = {"content": "1" * 400}
+    res = test_client.post(f"/articles/{article_id}/comments", json=req_body)
+    assert res.status_code == 200
+    comment_id = res.json()["comment_id"]
+    await delete_comment(comment_id)
+
     req_body = {"content": "1" * 401}
     res = test_client.post(f"/articles/{article_id}/comments", json=req_body)
     assert res.status_code == 400
@@ -118,6 +130,12 @@ async def test_post_comments(test_db, test_client):
 
 @pytest.mark.asyncio
 async def test_patch_comments(test_db, test_client):
+    async def restore_comment(comment_id, article_id, content):
+        await test_db.execute(
+            query="UPDATE `comment` SET `content` = :content, `article_id` = :article_id WHERE `comment_id` = :comment_id;",
+            values={"content": content, "article_id": article_id, "comment_id": comment_id},
+        )
+
     article_id = await create_article(test_db)
     created_at = get_now_date_time()
     default_content = "default_content"
@@ -130,10 +148,8 @@ async def test_patch_comments(test_db, test_client):
         },
     )
 
-    new_content = "new_content"
-
     # DB上に存在しないarticle_idでリクエストする
-    req_body = {"content": new_content}
+    req_body = {"content": "new_content"}
     res = test_client.patch(
         f"/articles/{article_id + 100}/comments/{comment_id}",
         json=req_body,
@@ -141,7 +157,7 @@ async def test_patch_comments(test_db, test_client):
     assert res.status_code == 404
 
     # DB上に存在しないcomment_idでリクエストする
-    req_body = {"content": new_content}
+    req_body = {"content": "new_content"}
     res = test_client.patch(
         f"/articles/{article_id}/comments/{comment_id + 100}",
         json=req_body,
@@ -149,7 +165,7 @@ async def test_patch_comments(test_db, test_client):
     assert res.status_code == 404
 
     # contentを指定してリクエストする
-    req_body = {"content": new_content}
+    req_body = {"content": "new_content"}
     res = test_client.patch(f"/articles/{article_id}/comments/{comment_id}", json=req_body)
     assert res.status_code == 200
     db_res = await test_db.fetch_one(
@@ -158,6 +174,7 @@ async def test_patch_comments(test_db, test_client):
     )
     assert db_res != None
     assert db_res["content"] == req_body["content"]
+    await restore_comment(comment_id, article_id, default_content)
 
     # contentを指定せずにリクエストする
     req_body = {}
@@ -179,40 +196,36 @@ async def test_patch_comments(test_db, test_client):
 
 @pytest.mark.asyncio
 async def test_delete_comments(test_db, test_client):
+
+    async def insert_comment(article_id):
+        default_content = "default_content"
+        created_at = get_now_date_time()
+        comment_id = await test_db.execute(
+            query="INSERT INTO `comment` (`article_id`, `content`, `created_at`) VALUES (:article_id, :content, :created_at)",
+            values={
+                "article_id": article_id,
+                "content": default_content,
+                "created_at": created_at,
+            },
+        )
+        return comment_id
+
     article_id = await create_article(test_db)
-    created_at = get_now_date_time()
-    default_content = "default_content"
-    comment_id = await test_db.execute(
-        query="INSERT INTO `comment` (`article_id`, `content`, `created_at`) VALUES (:article_id, :content, :created_at)",
-        values={
-            "article_id": article_id,
-            "content": default_content,
-            "created_at": created_at,
-        },
-    )
 
     # DB上に存在しないarticle_idでリクエストする
+    comment_id = await insert_comment(article_id)
     req_body = {"comment_ids": [comment_id]}
     res = test_client.request("DELETE", f"/articles/{article_id + 100}/comments", json=req_body)
     assert res.status_code == 404
 
     # comment_idsを指定してリクエストする
+    comment_id = await insert_comment(article_id)
     req_body = {"comment_ids": [comment_id]}
     res = test_client.request("DELETE", f"/articles/{article_id}/comments", json=req_body)
     assert res.status_code == 200
 
     # comment_idsにDBに存在しないcomment_idを指定してリクエストする
-    article_id = await create_article(test_db)
-    created_at = get_now_date_time()
-    default_content = "default_content"
-    comment_id = await test_db.execute(
-        query="INSERT INTO `comment` (`article_id`, `content`, `created_at`) VALUES (:article_id, :content, :created_at)",
-        values={
-            "article_id": article_id,
-            "content": default_content,
-            "created_at": created_at,
-        },
-    )
+    comment_id = await insert_comment(article_id)
     req_body = {"comment_ids": [comment_id + 100]}
     res = test_client.request("DELETE", f"/articles/{article_id}/comments", json=req_body)
     assert res.status_code == 400

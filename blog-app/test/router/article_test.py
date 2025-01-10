@@ -86,21 +86,24 @@ async def test_get_article(test_db, test_client):
 
 @pytest.mark.asyncio
 async def test_post_article(test_db, test_client):
+    async def delete_article(article_id):
+        await test_db.execute(
+            query="DELETE FROM `article` WHERE `article_id` = :article_id;", values={"article_id": article_id}
+        )
+
     # titleを正常な値で指定してリクエストする
     req_body = {"title": "title1"}
     res = test_client.post("/articles", json=req_body)
     assert res.status_code == 200
+    article_id = res.json()["article_id"]
     db_res = await test_db.fetch_one(
-        query="SELECT `title`, `content` FROM `article` WHERE `title` = :title",
-        values={"title": req_body["title"]},
+        query="SELECT `title`, `content` FROM `article` WHERE `article_id` = :article_id",
+        values={"article_id": article_id},
     )
     assert db_res != None
     assert db_res["title"] == req_body["title"]
     assert db_res["content"] == ""
-    await test_db.execute(
-        query="DELETE FROM `article` WHERE `title` = :title",
-        values={"title": req_body["title"]},
-    )
+    await delete_article(article_id)
 
     # titleを指定せずにリクエストする
     req_body = {"content": "content1"}
@@ -114,6 +117,12 @@ async def test_post_article(test_db, test_client):
     assert res.json()["error_code"] == "invalid_format"
 
     # titleを33文字以上でリクエストする
+    req_body = {"title": "1" * 32, "content": "content1"}
+    res = test_client.post("/articles", json=req_body)
+    assert res.status_code == 200
+    article_id = res.json()["article_id"]
+    await delete_article(article_id)
+
     req_body = {"title": "1" * 33, "content": "content1"}
     res = test_client.post("/articles", json=req_body)
     assert res.status_code == 400
@@ -123,16 +132,23 @@ async def test_post_article(test_db, test_client):
     req_body = {"title": "title1", "content": "content1"}
     res = test_client.post("/articles", json=req_body)
     assert res.status_code == 200
-    db_res = await test_db.fetch_all(query="SELECT `title`, `content` FROM `article`")
-    assert len(db_res) == 1
-    assert db_res[0]["title"] == req_body["title"]
-    assert db_res[0]["content"] == req_body["content"]
-    await test_db.execute(
-        query="DELETE FROM `article` WHERE `title` = :title",
-        values={"title": req_body["title"]},
+    article_id = res.json()["article_id"]
+    db_res = await test_db.fetch_one(
+        query="SELECT `title`, `content` FROM `article` WHERE `article_id` = :article_id;",
+        values={"article_id": article_id},
     )
+    assert db_res is not None
+    assert db_res["title"] == req_body["title"]
+    assert db_res["content"] == req_body["content"]
+    await delete_article(article_id)
 
     # contentを2001文字以上でリクエストする
+    req_body = {"title": "title1", "content": "c" * 2000}
+    res = test_client.post("/articles", json=req_body)
+    assert res.status_code == 200
+    article_id = res.json()["article_id"]
+    await delete_article(article_id)
+
     req_body = {"title": "title1", "content": "c" * 2001}
     res = test_client.post("/articles", json=req_body)
     assert res.status_code == 400
@@ -141,9 +157,20 @@ async def test_post_article(test_db, test_client):
 
 @pytest.mark.asyncio
 async def test_patch_article(test_db, test_client):
-    created_at = get_now_date_time()
+
+    async def restore_article(article_id, title, content):
+        await test_db.execute(
+            query="UPDATE `article` SET `title` = :title, `content` = :content WHERE `article_id` = :article_id;",
+            values={
+                "title": title,
+                "content": content,
+                "article_id": article_id,
+            },
+        )
+
     default_title = "default_title"
     default_content = "default_content"
+    created_at = get_now_date_time()
     article_id = await test_db.execute(
         query="INSERT INTO `article` (`title`, `content`, `created_at`) VALUES (:title, :content, :created_at)",
         values={
@@ -161,20 +188,14 @@ async def test_patch_article(test_db, test_client):
     # titleのみ指定してリクエストする
     req_body = {"title": "new_title"}
     res = test_client.patch(f"/articles/{article_id}", json=req_body)
+    assert res.status_code == 200
     db_res = await test_db.fetch_one(
         query="SELECT * FROM `article` WHERE `article_id` = :article_id",
         values={"article_id": article_id},
     )
     assert db_res["title"] == req_body["title"]
     assert db_res["content"] == default_content
-    await test_db.execute(
-        query="UPDATE `article` SET `title` = :title, `content` = :content WHERE `article_id` = :article_id;",
-        values={
-            "title": default_title,
-            "content": default_content,
-            "article_id": article_id,
-        },
-    )
+    await restore_article(article_id, default_title, default_content)
 
     # titleを空文字でリクエストする
     req_body = {"title": ""}
@@ -183,6 +204,11 @@ async def test_patch_article(test_db, test_client):
     assert res.json()["error_code"] == "invalid_format"
 
     # titleを33文字以上でリクエストする
+    req_body = {"title": "1" * 32}
+    res = test_client.patch(f"/articles/{article_id}", json=req_body)
+    assert res.status_code == 200
+    await restore_article(article_id, default_title, default_content)
+
     req_body = {"title": "1" * 33}
     res = test_client.patch(f"/articles/{article_id}", json=req_body)
     assert res.status_code == 400
@@ -191,22 +217,21 @@ async def test_patch_article(test_db, test_client):
     # contentのみ指定してリクエストする
     req_body = {"content": "new_content"}
     res = test_client.patch(f"/articles/{article_id}", json=req_body)
+    assert res.status_code == 200
     db_res = await test_db.fetch_one(
         query="SELECT * FROM `article` WHERE `article_id` = :article_id",
         values={"article_id": article_id},
     )
     assert db_res["title"] == default_title
     assert db_res["content"] == req_body["content"]
-    await test_db.execute(
-        query="UPDATE `article` SET `title` = :title, `content` = :content WHERE `article_id` = :article_id;",
-        values={
-            "title": default_title,
-            "content": default_content,
-            "article_id": article_id,
-        },
-    )
+    await restore_article(article_id, default_title, default_content)
 
     # contentを2001文字以上でリクエストする
+    req_body = {"content": "1" * 2000}
+    res = test_client.patch(f"/articles/{article_id}", json=req_body)
+    assert res.status_code == 200
+    await restore_article(article_id, default_title, default_content)
+
     req_body = {"content": "1" * 2001}
     res = test_client.patch(f"/articles/{article_id}", json=req_body)
     assert res.status_code == 400
@@ -215,58 +240,43 @@ async def test_patch_article(test_db, test_client):
     # titleとcontentの両方を指定してリクエストする
     req_body = {"title": "new_title", "content": "new_content"}
     res = test_client.patch(f"/articles/{article_id}", json=req_body)
+    assert res.status_code == 200
     db_res = await test_db.fetch_one(
         query="SELECT * FROM `article` WHERE `article_id` = :article_id",
         values={"article_id": article_id},
     )
     assert db_res["title"] == req_body["title"]
     assert db_res["content"] == req_body["content"]
-    await test_db.execute(
-        query="UPDATE `article` SET `title` = :title, `content` = :content WHERE `article_id` = :article_id;",
-        values={
-            "title": default_title,
-            "content": default_content,
-            "article_id": article_id,
-        },
-    )
+    await restore_article(article_id, default_title, default_content)
 
 
 @pytest.mark.asyncio
 async def test_delete_articles(test_db, test_client):
+    async def insert_article():
+        created_at = get_now_date_time()
+        test_data = {
+            "title": "title_test",
+            "created_at": created_at,
+            "content": "content_test",
+        }
+        article_id = await test_db.execute(
+            query="INSERT INTO `article` (`title`, `content`, `created_at`) VALUES (:title, :content, :created_at)",
+            values={
+                "title": test_data["title"],
+                "content": test_data["content"],
+                "created_at": test_data["created_at"],
+            },
+        )
+        return article_id
+
     # DB上に存在するarticle_idでリクエストする
-    created_at = get_now_date_time()
-    test_data = {
-        "title": "title_test",
-        "created_at": created_at,
-        "content": "content_test",
-    }
-    article_id = await test_db.execute(
-        query="INSERT INTO `article` (`title`, `content`, `created_at`) VALUES (:title, :content, :created_at)",
-        values={
-            "title": test_data["title"],
-            "content": test_data["content"],
-            "created_at": test_data["created_at"],
-        },
-    )
+    article_id = await insert_article()
     req_body = {"article_ids": [article_id]}
     res = test_client.request("DELETE", "/articles", json=req_body)
     assert res.status_code == 200
 
     # 存在しないarticle_idでリクエストする
-    created_at = get_now_date_time()
-    test_data = {
-        "title": "title_test",
-        "created_at": created_at,
-        "content": "content_test",
-    }
-    article_id = await test_db.execute(
-        query="INSERT INTO `article` (`title`, `content`, `created_at`) VALUES (:title, :content, :created_at)",
-        values={
-            "title": test_data["title"],
-            "content": test_data["content"],
-            "created_at": test_data["created_at"],
-        },
-    )
+    article_id = await insert_article()
     req_body = {"article_ids": [article_id + 100]}
     res = test_client.request("DELETE", "/articles", json=req_body)
     assert res.status_code == 400
