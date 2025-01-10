@@ -2,9 +2,12 @@
 
 ## setup
 ### 前提
-poetryをインストールしてください
+poetryをインストールおいてください
 
 ### コマンド
-```
+```bash
 poetry shell
+cd blog-app
+python scripts/create_table.py # tableを追加する
+uvicorn main:app --reload
 ```
