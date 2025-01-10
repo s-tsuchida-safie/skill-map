@@ -33,8 +33,12 @@ class ArticlePostResponse(BaseModel):
 
 
 class ArticlePatchRequest(BaseModel):
-    title: Optional[str] | None = Field(None, title="ブログ記事のタイトル。1文字以上32文字以下")
-    content: Optional[str] | None = Field(None, title="ブログ記事の内容。2000文字以下。")
+    title: Optional[str] | None = Field(
+        None, title="ブログ記事のタイトル。1文字以上32文字以下"
+    )
+    content: Optional[str] | None = Field(
+        None, title="ブログ記事の内容。2000文字以下。"
+    )
 
 
 class ArticlePatchResponse(BaseModel):

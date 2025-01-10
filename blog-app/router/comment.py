@@ -12,7 +12,13 @@ from schema.comment import (
 from databases import Database
 from fastapi.param_functions import Body
 from fastapi.params import Query, Path
-from cruds.comment import create_comment, query_comments, delete_comments, update_comment, query_comment_by_id
+from cruds.comment import (
+    create_comment,
+    query_comments,
+    delete_comments,
+    update_comment,
+    query_comment_by_id,
+)
 from cruds.article import query_article_by_id
 from exception import AppException, ErrorCode
 from const import COMMENT_CONTENT_MAX_LENGTH
@@ -28,17 +34,27 @@ router = APIRouter()
 async def get_article_comments(
     article_id: int = Path(title="コメントされたブログ記事のID"),
     offset: int = Query(default=0, title="リストのオフセット"),
-    limit: int = Query(default=50, title="リストの上限サイズ。0から100までの値をとり、デフォルトは50。"),
+    limit: int = Query(
+        default=50, title="リストの上限サイズ。0から100までの値をとり、デフォルトは50。"
+    ),
     db: Database = Depends(get_database),
 ):
     article = await query_article_by_id(db, article_id)
     if article is None:
-        raise HTTPException(status_code=404, detail=f"article_id {article_id}が見つかりません")
+        raise HTTPException(
+            status_code=404, detail=f"article_id {article_id}が見つかりません"
+        )
     if offset < 0:
-        raise AppException(status_code=400, error_code=ErrorCode.out_of_range, detail="offsetは0以上で指定してください")
+        raise AppException(
+            status_code=400,
+            error_code=ErrorCode.out_of_range,
+            detail="offsetは0以上で指定してください",
+        )
     if limit < 1 or limit > 100:
         raise AppException(
-            status_code=400, error_code=ErrorCode.out_of_range, detail="limitは0以上100以下で指定してください"
+            status_code=400,
+            error_code=ErrorCode.out_of_range,
+            detail="limitは0以上100以下で指定してください",
         )
     return await query_comments(db, article_id, offset, limit)
 
@@ -55,12 +71,16 @@ async def post_article_comments(
 ):
     article = await query_article_by_id(db, article_id)
     if article is None:
-        raise HTTPException(status_code=404, detail=f"article_id {article_id}が見つかりません")
+        raise HTTPException(
+            status_code=404, detail=f"article_id {article_id}が見つかりません"
+        )
 
     content = body.content
     if len(content) == 0:
         raise AppException(
-            status_code=400, error_code=ErrorCode.invalid_format, detail="contentに空文字は指定できません"
+            status_code=400,
+            error_code=ErrorCode.invalid_format,
+            detail="contentに空文字は指定できません",
         )
     if len(content) > COMMENT_CONTENT_MAX_LENGTH:
         raise AppException(
@@ -91,12 +111,15 @@ async def patch_article_comment(
     comment = await query_comment_by_id(db, article_id, comment_id)
     if comment is None:
         raise HTTPException(
-            status_code=404, detail=f"article_id {article_id}内にcomment_id {comment_id}が見つかりません"
+            status_code=404,
+            detail=f"article_id {article_id}内にcomment_id {comment_id}が見つかりません",
         )
     content = body.content
     if len(content) == 0:
         raise AppException(
-            status_code=400, error_code=ErrorCode.invalid_format, detail="contentに空文字は指定できません"
+            status_code=400,
+            error_code=ErrorCode.invalid_format,
+            detail="contentに空文字は指定できません",
         )
     if len(content) > COMMENT_CONTENT_MAX_LENGTH:
         raise AppException(
@@ -121,7 +144,9 @@ async def delete_article_comment(
 ):
     article = await query_article_by_id(db, article_id)
     if article is None:
-        raise HTTPException(status_code=404, detail=f"article_id {article_id}が見つかりません")
+        raise HTTPException(
+            status_code=404, detail=f"article_id {article_id}が見つかりません"
+        )
 
     comment_ids = body.comment_ids
     for comment_id in comment_ids:

@@ -13,7 +13,13 @@ from schema.article import (
 from databases import Database
 from fastapi.param_functions import Body
 from fastapi.params import Query, Path
-from cruds.article import query_articles, create_article, query_article_by_id, delete_articles, update_article
+from cruds.article import (
+    query_articles,
+    create_article,
+    query_article_by_id,
+    delete_articles,
+    update_article,
+)
 from exception import AppException, ErrorCode
 from fastapi import HTTPException
 from const import ARTICLE_TITLE_MAX_LENGTH, LIMIT_MAX, ARTICLE_CONTENT_MAX_LENGTH
@@ -22,17 +28,27 @@ from const import ARTICLE_TITLE_MAX_LENGTH, LIMIT_MAX, ARTICLE_CONTENT_MAX_LENGT
 router = APIRouter()
 
 
-@router.get("/articles", summary="記事の一覧を取得する", response_model=ArticleListResponse)
+@router.get(
+    "/articles", summary="記事の一覧を取得する", response_model=ArticleListResponse
+)
 async def get_articles(
     offset: int = Query(default=0, title="リストのオフセット"),
-    limit: int = Query(default=50, title="リストの上限サイズ。0から100までの値をとり、デフォルトは50。"),
+    limit: int = Query(
+        default=50, title="リストの上限サイズ。0から100までの値をとり、デフォルトは50。"
+    ),
     db: Database = Depends(get_database),
 ) -> ArticleListResponse:
     if offset < 0:
-        raise AppException(status_code=400, error_code=ErrorCode.out_of_range, detail="offsetは0以上で指定してください")
+        raise AppException(
+            status_code=400,
+            error_code=ErrorCode.out_of_range,
+            detail="offsetは0以上で指定してください",
+        )
     if limit < 1 or limit > LIMIT_MAX:
         raise AppException(
-            status_code=400, error_code=ErrorCode.out_of_range, detail=f"limitは0以上{LIMIT_MAX}以下で指定してください"
+            status_code=400,
+            error_code=ErrorCode.out_of_range,
+            detail=f"limitは0以上{LIMIT_MAX}以下で指定してください",
         )
     response = await query_articles(db, offset, limit)
     return response
@@ -49,18 +65,28 @@ async def get_article_by_id(
 ):
     article = await query_article_by_id(db, article_id)
     if article is None:
-        raise HTTPException(status_code=404, detail=f"article_id {article_id}が見つかりません")
-    return ArticleResponse(article_id=article.article_id, title=article.title, content=article.content)
+        raise HTTPException(
+            status_code=404, detail=f"article_id {article_id}が見つかりません"
+        )
+    return ArticleResponse(
+        article_id=article.article_id, title=article.title, content=article.content
+    )
 
 
-@router.post("/articles", summary="ブログ記事を作成する", response_model=ArticlePostResponse)
+@router.post(
+    "/articles", summary="ブログ記事を作成する", response_model=ArticlePostResponse
+)
 async def post_articles(
     body: ArticlePostRequest = Body(...),
     db: Database = Depends(get_database),
 ):
     title = body.title
     if len(title) == 0:
-        raise AppException(status_code=400, error_code=ErrorCode.invalid_format, detail="titleに空文字は指定できません")
+        raise AppException(
+            status_code=400,
+            error_code=ErrorCode.invalid_format,
+            detail="titleに空文字は指定できません",
+        )
     if len(title) > ARTICLE_TITLE_MAX_LENGTH:
         raise AppException(
             status_code=400,
@@ -92,11 +118,17 @@ async def patch_article(
 ):
     article = await query_article_by_id(db, article_id)
     if article is None:
-        raise HTTPException(status_code=404, detail=f"article_id {article_id}が見つかりません")
+        raise HTTPException(
+            status_code=404, detail=f"article_id {article_id}が見つかりません"
+        )
 
     title = body.title
     if title is not None and len(title) == 0:
-        raise AppException(status_code=400, error_code=ErrorCode.invalid_format, detail="titleに空文字は指定できません")
+        raise AppException(
+            status_code=400,
+            error_code=ErrorCode.invalid_format,
+            detail="titleに空文字は指定できません",
+        )
     if title is not None and len(title) > ARTICLE_TITLE_MAX_LENGTH:
         raise AppException(
             status_code=400,
@@ -116,7 +148,9 @@ async def patch_article(
     return ArticlePatchResponse(status="success")
 
 
-@router.delete("/articles", summary="ブログ記事を削除する", response_model=ArticleDeleteResponse)
+@router.delete(
+    "/articles", summary="ブログ記事を削除する", response_model=ArticleDeleteResponse
+)
 async def delete_article(
     body: ArticleDeleteRequest = Body(...),
     db: Database = Depends(get_database),

@@ -25,7 +25,9 @@ class AppException(HTTPException):
 async def exception_handler(request: Request, exc: AppException) -> JSONResponse:
     body = {"detail": exc.detail, "error_code": exc.error_code}
     headers = getattr(exc, "headers", None)
-    return JSONResponse(body, status_code=exc.status_code, headers=headers if headers else None)
+    return JSONResponse(
+        body, status_code=exc.status_code, headers=headers if headers else None
+    )
 
 
 exception_handlers = {AppException: exception_handler}

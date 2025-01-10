@@ -42,7 +42,10 @@ async def query_comment_by_id(db: Database, article_id: int, commnet_id: int):
         return None
 
     return Comment(
-        article_id=res["article_id"], comment_id=res["comment_id"], content=res["content"], created_at=res["created_at"]
+        article_id=res["article_id"],
+        comment_id=res["comment_id"],
+        content=res["content"],
+        created_at=res["created_at"],
     )
 
 

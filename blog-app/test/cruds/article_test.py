@@ -14,7 +14,12 @@ async def test_query_articles(test_db):
     await test_db.execute_many(
         query="INSERT INTO `article` (`title`, `content`, `created_at`) VALUES (:title, :content, :created_at)",
         values=[
-            {"title": data["title"], "content": data["content"], "created_at": data["created_at"]} for data in test_data
+            {
+                "title": data["title"],
+                "content": data["content"],
+                "created_at": data["created_at"],
+            }
+            for data in test_data
         ],
     )
     # offset > totalの場合

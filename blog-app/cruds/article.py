@@ -35,7 +35,9 @@ async def query_articles(db: Database, offset: int, limit: int):
         if res is not None:
             comment_count = res["count"]
 
-        list.append({"article_id": article_id, "title": title, "comment_count": comment_count})
+        list.append(
+            {"article_id": article_id, "title": title, "comment_count": comment_count}
+        )
     return {
         "total": total,
         "offset": offset,
@@ -54,7 +56,10 @@ async def query_article_by_id(db: Database, article_id: int):
         return None
 
     return Article(
-        article_id=res["article_id"], title=res["title"], content=res["content"], created_at=res["created_at"]
+        article_id=res["article_id"],
+        title=res["title"],
+        content=res["content"],
+        created_at=res["created_at"],
     )
 
 
@@ -74,7 +79,9 @@ async def delete_articles(db: Database, article_ids: List[int]):
     )
 
 
-async def update_article(db: Database, article_id: int, title: str | None, content: str | None):
+async def update_article(
+    db: Database, article_id: int, title: str | None, content: str | None
+):
     set_params = []
     values = {"article_id": article_id}
     if title is not None:
@@ -83,5 +90,9 @@ async def update_article(db: Database, article_id: int, title: str | None, conte
     if content is not None:
         set_params.append("content = :content")
         values["content"] = content
-    query = "UPDATE `article` SET " + ", ".join(set_params) + " WHERE article_id = :article_id"
+    query = (
+        "UPDATE `article` SET "
+        + ", ".join(set_params)
+        + " WHERE article_id = :article_id"
+    )
     await db.execute(query=query, values=values)

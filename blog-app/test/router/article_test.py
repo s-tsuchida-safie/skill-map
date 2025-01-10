@@ -13,7 +13,12 @@ async def test_get_articles(test_db, test_client):
     await test_db.execute_many(
         query="INSERT INTO `article` (`title`, `content`, `created_at`) VALUES (:title, :content, :created_at)",
         values=[
-            {"title": data["title"], "content": data["content"], "created_at": data["created_at"]} for data in test_data
+            {
+                "title": data["title"],
+                "content": data["content"],
+                "created_at": data["created_at"],
+            }
+            for data in test_data
         ],
     )
     # クエリパラメータなしでリクエストする
@@ -52,10 +57,18 @@ async def test_get_articles(test_db, test_client):
 @pytest.mark.asyncio
 async def test_get_article(test_db, test_client):
     created_at = get_now_date_time()
-    test_data = {"title": "title_test", "created_at": created_at, "content": "content_test"}
+    test_data = {
+        "title": "title_test",
+        "created_at": created_at,
+        "content": "content_test",
+    }
     id = await test_db.execute(
         query="INSERT INTO `article` (`title`, `content`, `created_at`) VALUES (:title, :content, :created_at)",
-        values={"title": test_data["title"], "content": test_data["content"], "created_at": test_data["created_at"]},
+        values={
+            "title": test_data["title"],
+            "content": test_data["content"],
+            "created_at": test_data["created_at"],
+        },
     )
 
     # DB上に存在するarticle_idでリクエストする
@@ -78,12 +91,16 @@ async def test_post_article(test_db, test_client):
     res = test_client.post("/articles", json=req_body)
     assert res.status_code == 200
     db_res = await test_db.fetch_one(
-        query="SELECT `title`, `content` FROM `article` WHERE `title` = :title", values={"title": req_body["title"]}
+        query="SELECT `title`, `content` FROM `article` WHERE `title` = :title",
+        values={"title": req_body["title"]},
     )
     assert db_res != None
     assert db_res["title"] == req_body["title"]
     assert db_res["content"] == ""
-    await test_db.execute(query="DELETE FROM `article` WHERE `title` = :title", values={"title": req_body["title"]})
+    await test_db.execute(
+        query="DELETE FROM `article` WHERE `title` = :title",
+        values={"title": req_body["title"]},
+    )
 
     # titleを指定せずにリクエストする
     req_body = {"content": "content1"}
@@ -110,7 +127,10 @@ async def test_post_article(test_db, test_client):
     assert len(db_res) == 1
     assert db_res[0]["title"] == req_body["title"]
     assert db_res[0]["content"] == req_body["content"]
-    await test_db.execute(query="DELETE FROM `article` WHERE `title` = :title", values={"title": req_body["title"]})
+    await test_db.execute(
+        query="DELETE FROM `article` WHERE `title` = :title",
+        values={"title": req_body["title"]},
+    )
 
     # contentを2001文字以上でリクエストする
     req_body = {"title": "title1", "content": "c" * 2001}
@@ -126,7 +146,11 @@ async def test_patch_article(test_db, test_client):
     default_content = "default_content"
     article_id = await test_db.execute(
         query="INSERT INTO `article` (`title`, `content`, `created_at`) VALUES (:title, :content, :created_at)",
-        values={"title": default_title, "content": default_content, "created_at": created_at},
+        values={
+            "title": default_title,
+            "content": default_content,
+            "created_at": created_at,
+        },
     )
 
     # 存在しないarticle_idでリクエストする
@@ -145,7 +169,11 @@ async def test_patch_article(test_db, test_client):
     assert db_res["content"] == default_content
     await test_db.execute(
         query="UPDATE `article` SET `title` = :title, `content` = :content WHERE `article_id` = :article_id;",
-        values={"title": default_title, "content": default_content, "article_id": article_id},
+        values={
+            "title": default_title,
+            "content": default_content,
+            "article_id": article_id,
+        },
     )
 
     # titleを空文字でリクエストする
@@ -171,7 +199,11 @@ async def test_patch_article(test_db, test_client):
     assert db_res["content"] == req_body["content"]
     await test_db.execute(
         query="UPDATE `article` SET `title` = :title, `content` = :content WHERE `article_id` = :article_id;",
-        values={"title": default_title, "content": default_content, "article_id": article_id},
+        values={
+            "title": default_title,
+            "content": default_content,
+            "article_id": article_id,
+        },
     )
 
     # contentを2001文字以上でリクエストする
@@ -191,7 +223,11 @@ async def test_patch_article(test_db, test_client):
     assert db_res["content"] == req_body["content"]
     await test_db.execute(
         query="UPDATE `article` SET `title` = :title, `content` = :content WHERE `article_id` = :article_id;",
-        values={"title": default_title, "content": default_content, "article_id": article_id},
+        values={
+            "title": default_title,
+            "content": default_content,
+            "article_id": article_id,
+        },
     )
 
 
@@ -199,10 +235,18 @@ async def test_patch_article(test_db, test_client):
 async def test_delete_articles(test_db, test_client):
     # DB上に存在するarticle_idでリクエストする
     created_at = get_now_date_time()
-    test_data = {"title": "title_test", "created_at": created_at, "content": "content_test"}
+    test_data = {
+        "title": "title_test",
+        "created_at": created_at,
+        "content": "content_test",
+    }
     article_id = await test_db.execute(
         query="INSERT INTO `article` (`title`, `content`, `created_at`) VALUES (:title, :content, :created_at)",
-        values={"title": test_data["title"], "content": test_data["content"], "created_at": test_data["created_at"]},
+        values={
+            "title": test_data["title"],
+            "content": test_data["content"],
+            "created_at": test_data["created_at"],
+        },
     )
     req_body = {"article_ids": [article_id]}
     res = test_client.request("DELETE", "/articles", json=req_body)
@@ -210,10 +254,18 @@ async def test_delete_articles(test_db, test_client):
 
     # 存在しないarticle_idでリクエストする
     created_at = get_now_date_time()
-    test_data = {"title": "title_test", "created_at": created_at, "content": "content_test"}
+    test_data = {
+        "title": "title_test",
+        "created_at": created_at,
+        "content": "content_test",
+    }
     article_id = await test_db.execute(
         query="INSERT INTO `article` (`title`, `content`, `created_at`) VALUES (:title, :content, :created_at)",
-        values={"title": test_data["title"], "content": test_data["content"], "created_at": test_data["created_at"]},
+        values={
+            "title": test_data["title"],
+            "content": test_data["content"],
+            "created_at": test_data["created_at"],
+        },
     )
     req_body = {"article_ids": [article_id + 100]}
     res = test_client.request("DELETE", "/articles", json=req_body)
