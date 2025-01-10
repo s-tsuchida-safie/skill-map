@@ -7,7 +7,6 @@ from typing import Any, Dict, Optional
 class ErrorCode(str, Enum):
     out_of_range = "out_of_range"  # 範囲外を指定
     invalid_format = "invalid_format"  # 不正なフォーマット
-    no_required_param = "no_required_param"  # 必要なパラメータがない
 
 
 class AppException(HTTPException):
@@ -25,9 +24,7 @@ class AppException(HTTPException):
 async def exception_handler(request: Request, exc: AppException) -> JSONResponse:
     body = {"detail": exc.detail, "error_code": exc.error_code}
     headers = getattr(exc, "headers", None)
-    return JSONResponse(
-        body, status_code=exc.status_code, headers=headers if headers else None
-    )
+    return JSONResponse(body, status_code=exc.status_code, headers=headers if headers else None)
 
 
 exception_handlers = {AppException: exception_handler}
