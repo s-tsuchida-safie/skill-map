@@ -62,7 +62,7 @@ async def test_get_article(test_db, test_client):
         "created_at": created_at,
         "content": "content_test",
     }
-    id = await test_db.execute(
+    article_id = await test_db.execute(
         query="INSERT INTO `article` (`title`, `content`, `created_at`) VALUES (:title, :content, :created_at)",
         values={
             "title": test_data["title"],
@@ -72,15 +72,15 @@ async def test_get_article(test_db, test_client):
     )
 
     # DB上に存在するarticle_idでリクエストする
-    res = test_client.get("/articles/" + str(id))
+    res = test_client.get(f"/articles/{article_id}")
     assert res.status_code == 200
     resBody = res.json()
-    assert resBody["article_id"] == id
+    assert resBody["article_id"] == article_id
     assert resBody["title"] == test_data["title"]
     assert resBody["content"] == test_data["content"]
 
     # 存在しないarticle_idでリクエストする
-    res = test_client.get("/articles/" + str(-1))
+    res = test_client.get(f"/articles/{-1000}")
     assert res.status_code == 404
 
 
@@ -155,12 +155,12 @@ async def test_patch_article(test_db, test_client):
 
     # 存在しないarticle_idでリクエストする
     req_body = {}
-    res = test_client.patch("/articles/" + str(article_id + 1), json=req_body)
+    res = test_client.patch(f"/articles/{article_id + 100}", json=req_body)
     assert res.status_code == 404
 
     # titleのみ指定してリクエストする
     req_body = {"title": "new_title"}
-    res = test_client.patch("/articles/" + str(article_id), json=req_body)
+    res = test_client.patch(f"/articles/{article_id}", json=req_body)
     db_res = await test_db.fetch_one(
         query="SELECT * FROM `article` WHERE `article_id` = :article_id",
         values={"article_id": article_id},
@@ -178,19 +178,19 @@ async def test_patch_article(test_db, test_client):
 
     # titleを空文字でリクエストする
     req_body = {"title": ""}
-    res = test_client.patch("/articles/" + str(article_id), json=req_body)
+    res = test_client.patch(f"/articles/{article_id}", json=req_body)
     assert res.status_code == 400
     assert res.json()["error_code"] == "invalid_format"
 
     # titleを33文字以上でリクエストする
     req_body = {"title": "1" * 33}
-    res = test_client.patch("/articles/" + str(article_id), json=req_body)
+    res = test_client.patch(f"/articles/{article_id}", json=req_body)
     assert res.status_code == 400
     assert res.json()["error_code"] == "invalid_format"
 
     # contentのみ指定してリクエストする
     req_body = {"content": "new_content"}
-    res = test_client.patch("/articles/" + str(article_id), json=req_body)
+    res = test_client.patch(f"/articles/{article_id}", json=req_body)
     db_res = await test_db.fetch_one(
         query="SELECT * FROM `article` WHERE `article_id` = :article_id",
         values={"article_id": article_id},
@@ -208,13 +208,13 @@ async def test_patch_article(test_db, test_client):
 
     # contentを2001文字以上でリクエストする
     req_body = {"content": "1" * 2001}
-    res = test_client.patch("/articles/" + str(article_id), json=req_body)
+    res = test_client.patch(f"/articles/{article_id}", json=req_body)
     assert res.status_code == 400
     assert res.json()["error_code"] == "invalid_format"
 
     # titleとcontentの両方を指定してリクエストする
     req_body = {"title": "new_title", "content": "new_content"}
-    res = test_client.patch("/articles/" + str(article_id), json=req_body)
+    res = test_client.patch(f"/articles/{article_id}", json=req_body)
     db_res = await test_db.fetch_one(
         query="SELECT * FROM `article` WHERE `article_id` = :article_id",
         values={"article_id": article_id},

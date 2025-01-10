@@ -41,11 +41,11 @@ async def test_get_comments(test_db, test_client):
         ],
     )
     # DB上に存在しないarticle_idでリクエストする
-    res = test_client.get("/articles/" + str(article_id + 1) + "/comments")
+    res = test_client.get(f"/articles/{article_id + 100}/comments")
     assert res.status_code == 404
 
     # クエリパラメータなしでリクエストする
-    res = test_client.get("/articles/" + str(article_id) + "/comments")
+    res = test_client.get(f"/articles/{article_id}/comments")
     assert res.status_code == 200
     resBody = res.json()
     assert resBody["total"] == 3
@@ -54,9 +54,7 @@ async def test_get_comments(test_db, test_client):
     assert len(resBody["list"]) == 3
 
     # offset, limitを指定して、リクエストする
-    res = test_client.get(
-        "/articles/" + str(article_id) + "/comments", params={"offset": 1, "limit": 1}
-    )
+    res = test_client.get(f"/articles/{article_id}/comments", params={"offset": 1, "limit": 1})
     assert res.status_code == 200
     resBody = res.json()
     assert resBody["total"] == 3
@@ -65,22 +63,16 @@ async def test_get_comments(test_db, test_client):
     assert len(resBody["list"]) == 1
 
     # offsetを0以下の値を指定してリクエストする
-    res = test_client.get(
-        "/articles/" + str(article_id) + "/comments", params={"offset": -1}
-    )
+    res = test_client.get(f"/articles/{article_id}/comments", params={"offset": -1})
     assert res.status_code == 400
     assert res.json()["error_code"] == "out_of_range"
 
     # limitを1から100までの範囲外の値を指定してリクエストする
-    res = test_client.get(
-        "/articles/" + str(article_id) + "/comments", params={"limit": 1000}
-    )
+    res = test_client.get(f"/articles/{article_id}/comments", params={"limit": 1000})
     assert res.status_code == 400
     assert res.json()["error_code"] == "out_of_range"
 
-    res = test_client.get(
-        "/articles/" + str(article_id) + "/comments", params={"limit": 0}
-    )
+    res = test_client.get(f"/articles/{article_id}/comments", params={"limit": 0})
     assert res.status_code == 400
     assert res.json()["error_code"] == "out_of_range"
 
@@ -91,14 +83,12 @@ async def test_post_comments(test_db, test_client):
 
     # DB上に存在しないarticle_idでリクエストする
     req_body = {"content": "content1"}
-    res = test_client.post(
-        "/articles/" + str(article_id + 100) + "/comments", json=req_body
-    )
+    res = test_client.post(f"/articles/{article_id + 100}/comments", json=req_body)
     assert res.status_code == 404
 
     # contentを指定してリクエストする
     req_body = {"content": "content1"}
-    res = test_client.post("/articles/" + str(article_id) + "/comments", json=req_body)
+    res = test_client.post(f"/articles/{article_id}/comments", json=req_body)
     assert res.status_code == 200
     db_res = await test_db.fetch_one(
         query="SELECT `content` FROM `comment` WHERE `content` = :content;",
@@ -106,24 +96,22 @@ async def test_post_comments(test_db, test_client):
     )
     assert db_res != None
     assert db_res["content"] == req_body["content"]
-    await test_db.execute(
-        query="DELETE FROM `article` WHERE `title` = :title", values={"title": "title1"}
-    )
+    await test_db.execute(query="DELETE FROM `article` WHERE `title` = :title", values={"title": "title1"})
 
     # contentを指定せずにリクエストする
     req_body = {}
-    res = test_client.post("/articles/" + str(article_id) + "/comments", json=req_body)
+    res = test_client.post(f"/articles/{article_id}/comments", json=req_body)
     assert res.status_code == 422
 
     # contentを空文字でリクエストする
     req_body = {"content": ""}
-    res = test_client.post("/articles/" + str(article_id) + "/comments", json=req_body)
+    res = test_client.post(f"/articles/{article_id}/comments", json=req_body)
     assert res.status_code == 400
     assert res.json()["error_code"] == "invalid_format"
 
     # contentを401文字以上でリクエストする
     req_body = {"content": "1" * 401}
-    res = test_client.post("/articles/" + str(article_id) + "/comments", json=req_body)
+    res = test_client.post(f"/articles/{article_id}/comments", json=req_body)
     assert res.status_code == 400
     assert res.json()["error_code"] == "invalid_format"
 
@@ -147,7 +135,7 @@ async def test_patch_comments(test_db, test_client):
     # DB上に存在しないarticle_idでリクエストする
     req_body = {"content": new_content}
     res = test_client.patch(
-        "/articles/" + str(article_id + 100) + "/comments/" + str(comment_id),
+        f"/articles/{article_id + 100}/comments/{comment_id}",
         json=req_body,
     )
     assert res.status_code == 404
@@ -155,16 +143,14 @@ async def test_patch_comments(test_db, test_client):
     # DB上に存在しないcomment_idでリクエストする
     req_body = {"content": new_content}
     res = test_client.patch(
-        "/articles/" + str(article_id) + "/comments/" + str(comment_id + 100),
+        f"/articles/{article_id}/comments/{comment_id + 100}",
         json=req_body,
     )
     assert res.status_code == 404
 
     # contentを指定してリクエストする
     req_body = {"content": new_content}
-    res = test_client.patch(
-        "/articles/" + str(article_id) + "/comments/" + str(comment_id), json=req_body
-    )
+    res = test_client.patch(f"/articles/{article_id}/comments/{comment_id}", json=req_body)
     assert res.status_code == 200
     db_res = await test_db.fetch_one(
         query="SELECT `content` FROM `comment` WHERE `comment_id` = :comment_id;",
@@ -175,24 +161,18 @@ async def test_patch_comments(test_db, test_client):
 
     # contentを指定せずにリクエストする
     req_body = {}
-    res = test_client.patch(
-        "/articles/" + str(article_id) + "/comments/" + str(comment_id), json=req_body
-    )
+    res = test_client.patch(f"/articles/{article_id}/comments/{comment_id}", json=req_body)
     assert res.status_code == 422
 
     # contentに空文字を指定してリクエストする
     req_body = {"content": ""}
-    res = test_client.patch(
-        "/articles/" + str(article_id) + "/comments/" + str(comment_id), json=req_body
-    )
+    res = test_client.patch(f"/articles/{article_id}/comments/{comment_id}", json=req_body)
     assert res.status_code == 400
     assert res.json()["error_code"] == "invalid_format"
 
     # contentを401文字以上でリクエストする
     req_body = {"content": "1" * 401}
-    res = test_client.patch(
-        "/articles/" + str(article_id) + "/comments/" + str(comment_id), json=req_body
-    )
+    res = test_client.patch(f"/articles/{article_id}/comments/{comment_id}", json=req_body)
     assert res.status_code == 400
     assert res.json()["error_code"] == "invalid_format"
 
@@ -213,16 +193,12 @@ async def test_delete_comments(test_db, test_client):
 
     # DB上に存在しないarticle_idでリクエストする
     req_body = {"comment_ids": [comment_id]}
-    res = test_client.request(
-        "DELETE", "/articles/" + str(article_id + 100) + "/comments", json=req_body
-    )
+    res = test_client.request("DELETE", f"/articles/{article_id + 100}/comments", json=req_body)
     assert res.status_code == 404
 
     # comment_idsを指定してリクエストする
     req_body = {"comment_ids": [comment_id]}
-    res = test_client.request(
-        "DELETE", "/articles/" + str(article_id) + "/comments", json=req_body
-    )
+    res = test_client.request("DELETE", f"/articles/{article_id}/comments", json=req_body)
     assert res.status_code == 200
 
     # comment_idsにDBに存在しないcomment_idを指定してリクエストする
@@ -238,8 +214,6 @@ async def test_delete_comments(test_db, test_client):
         },
     )
     req_body = {"comment_ids": [comment_id + 100]}
-    res = test_client.request(
-        "DELETE", "/articles/" + str(article_id) + "/comments", json=req_body
-    )
+    res = test_client.request("DELETE", f"/articles/{article_id}/comments", json=req_body)
     assert res.status_code == 400
     assert res.json()["error_code"] == "invalid_format"
