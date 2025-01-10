@@ -34,12 +34,16 @@ router = APIRouter()
 async def get_article_comments(
     article_id: int = Path(title="コメントされたブログ記事のID"),
     offset: int = Query(default=0, title="リストのオフセット"),
-    limit: int = Query(default=50, title="リストの上限サイズ。0から100までの値をとり、デフォルトは50。"),
+    limit: int = Query(
+        default=50, title="リストの上限サイズ。0から100までの値をとり、デフォルトは50。"
+    ),
     db: Database = Depends(get_database),
 ):
     article = await query_article_by_id(db, article_id)
     if article is None:
-        raise HTTPException(status_code=404, detail=f"article_id {article_id}が見つかりません")
+        raise HTTPException(
+            status_code=404, detail=f"article_id {article_id}が見つかりません"
+        )
     if offset < 0:
         raise AppException(
             status_code=400,
@@ -67,7 +71,9 @@ async def post_article_comments(
 ):
     article = await query_article_by_id(db, article_id)
     if article is None:
-        raise HTTPException(status_code=404, detail=f"article_id {article_id}が見つかりません")
+        raise HTTPException(
+            status_code=404, detail=f"article_id {article_id}が見つかりません"
+        )
 
     content = body.content
     if len(content) == 0:
@@ -137,7 +143,9 @@ async def delete_article_comment(
 ):
     article = await query_article_by_id(db, article_id)
     if article is None:
-        raise HTTPException(status_code=404, detail=f"article_id {article_id}が見つかりません")
+        raise HTTPException(
+            status_code=404, detail=f"article_id {article_id}が見つかりません"
+        )
 
     comment_ids = body.comment_ids
     for comment_id in comment_ids:
